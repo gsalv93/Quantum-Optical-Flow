@@ -22,7 +22,7 @@ def save_flow_image(frame1, frame2, flow, path):
     height = frame1.shape[0]
     width = frame1.shape[1]
     save_flow_to_file(flow, height, width, path)
-    step = 4  # 2
+    step = 2  # 2
     plt.figure(figsize=(20, 5))
 
     plt.subplot(131)

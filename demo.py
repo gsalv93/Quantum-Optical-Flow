@@ -3,6 +3,7 @@ import cv2
 import time
 import glob
 import random
+import argparse
 import numpy as np
 from scipy.io import loadmat
 import sys
@@ -21,13 +22,14 @@ if not os.path.exists(OUTFOLDER):
 
 # Function to load image frames. (Tentative)
 
+
 def load_frames(base_folder):
     frame1_dir = base_folder + '0_img1.png'
     frame2_dir = base_folder + '0_img2.png'
     frame1 = cv2.imread(frame1_dir, cv2.IMREAD_GRAYSCALE)
     frame2 = cv2.imread(frame2_dir, cv2.IMREAD_GRAYSCALE)
     scale = 1
-    
+
     f1_rows, f1_cols = frame1.shape
     frame1_resized = cv2.resize(
         frame1, (int(f1_rows / scale), int(f1_cols / scale)))
@@ -46,6 +48,8 @@ generated (where i is the number of neighborhood, e.g. for 3x3 i=0, for 5x5 i=1,
 When extracting labels, I make sure to exclude labels for smaller neighbors (e.g. when computing the labels for the 5x5
 neighbor, labels that fall into the 3x3 neighborhood are excluded).
 """
+
+
 def generate_random_coordinates(patch_size, number_of_coordinates):
     coord_set = []
     biggest_value = int(patch_size/2)
@@ -55,6 +59,7 @@ def generate_random_coordinates(patch_size, number_of_coordinates):
         coords = (a, b) if random.random() > 0.5 else (a, b)
         coord_set.append(coords)
     return coord_set
+
 
 def generate_labels(image_shape):
 
@@ -67,12 +72,12 @@ def generate_labels(image_shape):
         labels_to_generate = 2
         # I keep track of generated labels
         number_of_generated_labels = 0
-        
+
         current_patch_size = 3
         list_of_labels = []
         # Looping until 30 as I'm generating 30 labels.
         while number_of_generated_labels < 30:
-            
+
             labels = generate_random_coordinates(
                 current_patch_size, labels_to_generate)
             number_of_generated_labels += labels_to_generate
@@ -89,10 +94,13 @@ def generate_labels(image_shape):
 
     return labels_matrix
 
+
 """
 The computed preference matrix and z vector are passed to this function. The goal is to extract the columns
 of the matrix P whose value in the corresponding position of the z vector is 1.
 """
+
+
 def and_function(P, z_hat):
 
     possible_candidates = []
@@ -107,10 +115,13 @@ def and_function(P, z_hat):
                                               (P.shape[0], len(possible_indices))))
     return possible_candidates, possible_indices
 
+
 """
 Extracting the best labels from the possible_candidates matrix. The chosen ones are the
 ones with the lowest energy computed when generating P.
 """
+
+
 def extracting_optical_flow(possible_candidates, possible_indices, Energy, labels):
     optical_flow = np.zeros(labels.shape[0], dtype='i,i')
 
@@ -133,7 +144,6 @@ def extracting_optical_flow(possible_candidates, possible_indices, Energy, label
     return optical_flow
 
 
-
 def evaluating_preference_matrix(P, Energy, labels, z_hat):
     optical_flow = np.zeros((P.shape[0]))
     possible_candidates, possible_indices = and_function(P, z_hat)
@@ -144,10 +154,21 @@ def evaluating_preference_matrix(P, Energy, labels, z_hat):
 
 
 def main():
+    # Input parameters for the energy function. Default values are still tentative.
+    parser = argparse.ArgumentParser(
+        description='Parameters for the energy function.')
+    parser.add_argument('-th', '--theta', nargs='?', default=0.5,
+                        help='Threshold value used when populating P matrix.')
+    parser.add_argument('-b', '--beta', nargs='?', default=1,
+                        help='Value used when computing weights in the energy function.')
+    parser.add_argument('-l', '--Lambda', nargs='?', default=1,
+                        help='Value that\'s multiplied to the second member in the energy function.')
+    parser.add_argument('-ta', '--tao', nargs='?', default=1,
+                        help='Thershold used for the first member of the energy function.')
+
+    args = parser.parse_args()
     # Loading and preparing frames (attualmente sono grayscale per semplicità)
     frame_1, frame_2 = load_frames(dataset_dir)
-    # print(padded_f1.shape)
-    # print(padded_f2.shape)
 
     # Generating labels
     labels = generate_labels(frame_1.shape)
@@ -167,11 +188,14 @@ def main():
     dsc = DisjointSetCover(sampler_type="sa", decompose=False)
 
     ### --- additional parameters --- ###
-    theta = 0.60  # use a fixed inlier threshold for all sequences
-
+    theta = args.theta
+    beta = args.beta
+    Lambda = args.Lambda
+    tao = args.tao
 
     # Preference-Consensus is obtained
-    P, Energy = get_preference_matrix_fm(frame_1, frame_2, labels, theta)
+    P, Energy = get_preference_matrix_fm(
+        frame_1, frame_2, labels, theta, beta, Lambda, tao)
     print("Done!")
     print("Computing z vector with chosen sampler...")
 
@@ -179,7 +203,7 @@ def main():
     # Energy = np.loadtxt('Energy.csv', delimiter=',')
 
     z_hat = dsc(P)
-    
+    print(z_hat)
     print("Done!")
     print("Computing optical flow...")
     optical_flow = evaluating_preference_matrix(P, Energy, labels, z_hat)
