@@ -60,7 +60,7 @@ def ncc_computation(patch_I1, patch_I2):
 
     linear_patch_I1 = patch_I1.flatten()
     linear_patch_I2 = patch_I2.flatten()
-    # Epsilon is set in order to avoid division by zero
+    # Epsilon is added in order to avoid division by zero
     norm_patch_I1 = np.linalg.norm(linear_patch_I1)
     linear_patch_I1 = linear_patch_I1 / (norm_patch_I1 + epsilon)
     norm_patch_I2 = np.linalg.norm(linear_patch_I2)
@@ -139,16 +139,16 @@ def get_preference_matrix_fm(frame_1, frame_2, labels, theta, beta, Lambda, tao)
     lambda -> arbitrary value.
     """
 
-    for label_index, label in enumerate(labels.T):
+    for label_index, label_matrix in enumerate(labels.T):
 
         iteration = 0
-        label = np.reshape(label, frame_1.shape)
+        label_matrix = np.reshape(label_matrix, frame_1.shape)
 
-        # PADDING IMAGES
+        # PADDING IMAGES AND LABEL MATRIX
         pad_size = get_pad_size(label_index)
         padded_frame_1, padded_frame_2 = pad_images(frame_1, frame_2, pad_size)
         padded_label_matrix = np.pad(
-            label, (1, 1), 'constant', constant_values=(0, 0))
+            label_matrix, (1, 1), 'constant', constant_values=(0, 0))
 
         print(
             f"--- Evaluating label for patch size of {pad_size*2+1} for each pixel ---")
@@ -156,8 +156,9 @@ def get_preference_matrix_fm(frame_1, frame_2, labels, theta, beta, Lambda, tao)
             for pixel_col in range(0, frame_1.shape[1]):
                 padded_row = pixel_row+1
                 padded_col = pixel_col+1
+
                 pixel_coordinates = (pixel_row, pixel_col)  # p
-                pixel_label = label[pixel_row][pixel_col]  # fp
+                pixel_label = label_matrix[pixel_row][pixel_col]  # fp
 
                 pixel_neighbours = [(pixel_row, pixel_col+1), (pixel_row+1, pixel_col),
                                     (pixel_row, pixel_col-1), (pixel_row-1, pixel_col)]  # q
@@ -172,28 +173,28 @@ def get_preference_matrix_fm(frame_1, frame_2, labels, theta, beta, Lambda, tao)
                 # Computing rho_S for pixel (i,j)
                 rho_S = 0
                 for i in range(0, 4):
-                    neighbour_coordinates = pixel_neighbours[i]
+                    neighbour_pixel_coordinates = pixel_neighbours[i]
                     # Check if the 4-pixel neighbour is inside the label matrix
                     # If it's not, I leave its coordinates to zero.
-                    label_neighbour = padded_label_matrix[neighbour_coordinates[0] +
-                                                          1][neighbour_coordinates[1]+1]
+                    neighbour_label = padded_label_matrix[neighbour_pixel_coordinates[0] +
+                                                          1][neighbour_pixel_coordinates[1]+1]
 
-                    f_difference = (pixel_label[0] - label_neighbour[0],
-                                    pixel_label[1] - label_neighbour[1])
+                    f_difference = (pixel_label[0] - neighbour_label[0],
+                                    pixel_label[1] - neighbour_label[1])
                     reg_factor = regularization(f_difference, tao)
 
                     # I1 at pixel_coord, I2 at pixel_neighbours
 
                     w = weight(padded_frame_1[pixel_coordinates[0]][pixel_coordinates[1]],
-                               padded_frame_2[neighbour_coordinates[0]][neighbour_coordinates[1]], beta)
+                               padded_frame_2[neighbour_pixel_coordinates[0]][neighbour_pixel_coordinates[1]], beta)
                     rho_S += w*reg_factor
 
                 # Computing objective for pixel (i,j)
-                r = rho_D + (Lambda * rho_S)
-                Energy[iteration][label_index] = r
+                e = rho_D + (Lambda * rho_S)
+                Energy[iteration][label_index] = e
                 # Checking if the label is suitable for pixel (i,j)
 
-                if r < theta:
+                if e < theta:
                     P[iteration][label_index] = 1
 
                 iteration += 1
