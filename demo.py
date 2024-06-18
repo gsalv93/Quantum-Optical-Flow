@@ -124,13 +124,13 @@ ones with the lowest energy computed when generating P.
 
 def extracting_optical_flow(possible_candidates, possible_indices, Energy, labels):
     optical_flow = np.zeros(labels.shape[0], dtype='i,i')
-
+    print(possible_candidates.shape)
     for row in range(possible_candidates.shape[0]):
         min_energy = 10000
         min_index = -1
         # Checking the row element with the lowest energy
         for col in range(possible_candidates.shape[1]):
-            # Skipping value if possible candidates entry is 0
+            # Skipping value if possible_candidates entry is 0
             if possible_candidates[row][col] == 0:
                 continue
             else:
@@ -157,6 +157,8 @@ def main():
     # Input parameters for the energy function. Default values are still tentative.
     parser = argparse.ArgumentParser(
         description='Parameters for the energy function.')
+    parser.add_argument('-r', '--reg_type', nargs='?', default='L1',
+                        help='Threshold value used when populating P matrix.')
     parser.add_argument('-th', '--theta', nargs='?', default=0.5,
                         help='Threshold value used when populating P matrix.')
     parser.add_argument('-b', '--beta', nargs='?', default=1,
@@ -188,19 +190,23 @@ def main():
     dsc = DisjointSetCover(sampler_type="sa", decompose=False)
 
     ### --- additional parameters --- ###
+    reg_type = args.reg_type.upper()
     theta = args.theta
     beta = args.beta
     Lambda = args.Lambda
     tao = args.tao
+    # If an invalid regularization parameter is entered, I just default to L1.
+    if reg_type != 'L1' and reg_type != 'L2' and reg_type != 'C':
+        reg_type = 'L1'
 
     # Preference-Consensus is obtained
     P, Energy = get_preference_matrix_fm(
-        frame_1, frame_2, labels, theta, beta, Lambda, tao)
+        frame_1, frame_2, labels, reg_type, theta, beta, Lambda, tao)
     print("Done!")
     print("Computing z vector with chosen sampler...")
 
-    # P = np.loadtxt('P.csv', delimiter=',')
-    # Energy = np.loadtxt('Energy.csv', delimiter=',')
+    # P = np.loadtxt('demo_output/P.csv', delimiter=',')
+    # Energy = np.loadtxt('demo_output/Energy.csv', delimiter=',')
 
     z_hat = dsc(P)
     print(z_hat)

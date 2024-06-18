@@ -5,7 +5,7 @@ import numpy as np
 
 dataset_dir = 'dataset/'
 epsilon = sys.float_info.min
-
+penalty_value = 10000
 # MISC
 
 
@@ -26,19 +26,45 @@ def pad_images(image_1, image_2, pad_size):
         image_1, pad_size, pad_size, pad_size, pad_size, cv2.BORDER_CONSTANT, 0)
 
     # Padding value for image_2 is bigger since out of bounds situations during I2 patch calculation for NCC may otherwise occur.
-    p_frame2 = cv2.copyMakeBorder(
-        image_2, pad_size*2, pad_size*2, pad_size*2, pad_size*2, cv2.BORDER_CONSTANT, 0)
+    # Padding with the penalty value (buffer zone) and then padding the buffer zone with zero padding to avoid going out of bounds.
+    p_frame2 = np.pad(image_2, pad_width=pad_size, mode='constant',
+                      constant_values=penalty_value).astype('int32')
+    p_frame2 = np.pad(p_frame2, pad_width=pad_size, mode='constant',
+                      constant_values=0)
 
     return p_frame1, p_frame2
 
 
-# RHO_S STUFF
-
-def regularization(f_star, tao):
+def L1_reg(f_star, tao):
     penalty_1 = abs(f_star[0])
     penalty_2 = abs(f_star[1])
+    return penalty_1 + penalty_2
 
-    return min(penalty_1 + penalty_2, tao)
+
+def L2_reg(f_star, tao):
+    penalty_1 = (f_star[0]**2)
+    penalty_2 = (f_star[1]**2)
+    return penalty_1 + penalty_2
+
+
+def Charbonnier_reg(f_star, tao):
+    eps = 5
+    penalty_1 = math.sqrt(f_star[0]**2 + eps**2)
+    penalty_2 = math.sqrt(f_star[1]**2 + eps**2)
+    return penalty_1 + penalty_2
+
+# RHO_S STUFF
+
+
+def regularization(f_star, tao, reg_type):
+    if reg_type == 'L1':
+        tot_penalty = L1_reg(f_star, tao)
+    if reg_type == 'L2':
+        tot_penalty = L2_reg(f_star, tao)
+    if reg_type == 'C':
+        tot_penalty = Charbonnier_reg(f_star, tao)
+
+    return min(tot_penalty, tao)
 
 
 def weight(I1_value, I2_value, beta):  # exp(- (||I1(p) - I2(q)|| / beta))
@@ -76,8 +102,6 @@ def ncc_computation(patch_I1, patch_I2):
 
 def penalty(pixel_coordinates, label, padded_I1, padded_I2, pad_size):
 
-    penalty_value = 10000
-
     # PREPARING I1 AND I2 PATCHES FOR NCC
     patch_size = pad_size*2+1
     # I'm computing the pixel coordinates of the padded image patch, given the original pixel coordinates
@@ -98,17 +122,11 @@ def penalty(pixel_coordinates, label, padded_I1, padded_I2, pad_size):
     pixel_coords_of_padded_I2 = tuple(
         map(sum, zip(pixel_coords_in_I2, (pad_size+pad_size, pad_size+pad_size))))
 
-    patch_x = int(pixel_coords_of_padded_I2[0] - pad_size + pad_size)
-    patch_y = int(pixel_coords_of_padded_I2[1] - pad_size + pad_size)
+    patch_x = int(pixel_coords_of_padded_I2[0])
+    patch_y = int(pixel_coords_of_padded_I2[1])
 
     patch_I2 = padded_I2[patch_x:patch_x +
                          patch_size, patch_y:patch_y+patch_size].astype('int32')
-
-    # If p+fp is in the buffer zone, I set its value to a big penalty value
-    if (pixel_coords_in_I2[0] < 0 or pixel_coords_in_I2[1] < 0) or (pixel_coords_in_I2[0] >= padded_I2.shape[0]-(pad_size+3) or pixel_coords_in_I2[1] >= padded_I2.shape[1]-(pad_size+3)):
-        # print(patch_I1)
-        # print(patch_I2)
-        patch_I2[1][1] = penalty_value
 
     ncc = np.mean(ncc_computation(patch_I1, patch_I2))
     output = 1 - np.maximum(ncc, 0)
@@ -118,7 +136,7 @@ def penalty(pixel_coordinates, label, padded_I1, padded_I2, pad_size):
 # Computing Preference matrix P.
 
 
-def get_preference_matrix_fm(frame_1, frame_2, labels, theta, beta, Lambda, tao):
+def get_preference_matrix_fm(frame_1, frame_2, labels, reg_type, theta, beta, Lambda, tao):
 
     # Preference Consensus Matrix
     P = np.zeros((labels.shape[0], labels.shape[1]))
@@ -181,7 +199,7 @@ def get_preference_matrix_fm(frame_1, frame_2, labels, theta, beta, Lambda, tao)
 
                     f_difference = (pixel_label[0] - neighbour_label[0],
                                     pixel_label[1] - neighbour_label[1])
-                    reg_factor = regularization(f_difference, tao)
+                    reg_factor = regularization(f_difference, tao, reg_type)
 
                     # I1 at pixel_coord, I2 at pixel_neighbours
 
