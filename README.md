@@ -10,5 +10,8 @@ https://www.dwavesys.com/
 The project is inspired by this repository:
 https://github.com/FarinaMatteo/qmmf
 
+Energy function used:
+https://arxiv.org/abs/1604.03513
+
 The currently used toy dataset is the following:
 https://github.com/RahulSChand/Optical-Flow-Shape-Dataset
