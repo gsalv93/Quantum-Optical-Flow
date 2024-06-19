@@ -24,6 +24,7 @@ if not os.path.exists(OUTFOLDER):
 
 
 def load_frames(base_folder):
+    # 0_img, 385_img
     frame1_dir = base_folder + '0_img1.png'
     frame2_dir = base_folder + '0_img2.png'
     frame1 = cv2.imread(frame1_dir, cv2.IMREAD_GRAYSCALE)
@@ -157,7 +158,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Parameters for the energy function.')
     parser.add_argument('-r', '--reg_type', nargs='?', default='L1',
-                        help='Threshold value used when populating P matrix.')
+                        help='Regularization type.')
     parser.add_argument('-th', '--theta', nargs='?', default=2.5,
                         help='Threshold value used when populating P matrix.')
     parser.add_argument('-b', '--beta', nargs='?', default=1,
@@ -197,7 +198,9 @@ def main():
     # If an invalid regularization parameter is entered, I just default to L1.
     if reg_type != 'L1' and reg_type != 'L2' and reg_type != 'C':
         reg_type = 'L1'
-
+    print("Chosen values:")
+    print(
+        f"Theta: {theta}\nBeta: {beta}\nLambda: {Lambda}\nTao: {tao}\nRegularization: {reg_type}")
     # Preference-Consensus is obtained
     P, Energy = get_preference_matrix_fm(
         frame_1, frame_2, labels, reg_type, theta, beta, Lambda, tao)
