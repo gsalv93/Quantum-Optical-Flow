@@ -145,7 +145,6 @@ def extracting_optical_flow(possible_candidates, possible_indices, Energy, label
 
 
 def evaluating_preference_matrix(P, Energy, labels, z_hat):
-    optical_flow = np.zeros((P.shape[0]))
     possible_candidates, possible_indices = and_function(P, z_hat)
     optical_flow = extracting_optical_flow(
         possible_candidates, possible_indices, Energy, labels)
@@ -159,7 +158,7 @@ def main():
         description='Parameters for the energy function.')
     parser.add_argument('-r', '--reg_type', nargs='?', default='L1',
                         help='Threshold value used when populating P matrix.')
-    parser.add_argument('-th', '--theta', nargs='?', default=0.5,
+    parser.add_argument('-th', '--theta', nargs='?', default=2.5,
                         help='Threshold value used when populating P matrix.')
     parser.add_argument('-b', '--beta', nargs='?', default=1,
                         help='Value used when computing weights in the energy function.')
@@ -191,10 +190,10 @@ def main():
 
     ### --- additional parameters --- ###
     reg_type = args.reg_type.upper()
-    theta = args.theta
-    beta = args.beta
-    Lambda = args.Lambda
-    tao = args.tao
+    theta = float(args.theta)
+    beta = float(args.beta)
+    Lambda = float(args.Lambda)
+    tao = float(args.tao)
     # If an invalid regularization parameter is entered, I just default to L1.
     if reg_type != 'L1' and reg_type != 'L2' and reg_type != 'C':
         reg_type = 'L1'
@@ -211,10 +210,13 @@ def main():
     z_hat = dsc(P)
     print(z_hat)
     print("Done!")
+
     print("Computing optical flow...")
     optical_flow = evaluating_preference_matrix(P, Energy, labels, z_hat)
+
     print("Done!")
     print("Results are in the work directory.")
+    # Checking for results
 
     save_flow_image(frame_1, frame_2, optical_flow, OUTFOLDER)
 

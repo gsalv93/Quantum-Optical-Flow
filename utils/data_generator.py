@@ -35,19 +35,19 @@ def pad_images(image_1, image_2, pad_size):
     return p_frame1, p_frame2
 
 
-def L1_reg(f_star, tao):
+def L1_reg(f_star):
     penalty_1 = abs(f_star[0])
     penalty_2 = abs(f_star[1])
     return penalty_1 + penalty_2
 
 
-def L2_reg(f_star, tao):
+def L2_reg(f_star):
     penalty_1 = (f_star[0]**2)
     penalty_2 = (f_star[1]**2)
     return penalty_1 + penalty_2
 
 
-def Charbonnier_reg(f_star, tao):
+def Charbonnier_reg(f_star):
     eps = 5
     penalty_1 = math.sqrt(f_star[0]**2 + eps**2)
     penalty_2 = math.sqrt(f_star[1]**2 + eps**2)
@@ -58,11 +58,11 @@ def Charbonnier_reg(f_star, tao):
 
 def regularization(f_star, tao, reg_type):
     if reg_type == 'L1':
-        tot_penalty = L1_reg(f_star, tao)
+        tot_penalty = L1_reg(f_star)
     if reg_type == 'L2':
-        tot_penalty = L2_reg(f_star, tao)
+        tot_penalty = L2_reg(f_star)
     if reg_type == 'C':
-        tot_penalty = Charbonnier_reg(f_star, tao)
+        tot_penalty = Charbonnier_reg(f_star)
 
     return min(tot_penalty, tao)
 
