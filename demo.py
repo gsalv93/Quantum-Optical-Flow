@@ -102,7 +102,7 @@ of the matrix P whose value in the corresponding position of the z vector is 1.
 """
 
 
-def and_function(P, z_hat):
+def union_function(P, z_hat):
 
     possible_candidates = []
     possible_indices = []
@@ -114,6 +114,7 @@ def and_function(P, z_hat):
 
     possible_candidates = np.array(np.reshape(possible_candidates,
                                               (P.shape[0], len(possible_indices))))
+
     return possible_candidates, possible_indices
 
 
@@ -125,28 +126,28 @@ ones with the lowest energy computed when generating P.
 
 def extracting_optical_flow(possible_candidates, possible_indices, Energy, labels):
     optical_flow = np.zeros(labels.shape[0], dtype='i,i')
-    print(possible_candidates.shape)
+
     for row in range(possible_candidates.shape[0]):
-        min_energy = 10000
+        min_energy = float('inf')
         min_index = -1
+        candidate_indices = np.nonzero(possible_candidates[row])[0]
         # Checking the row element with the lowest energy
-        for col in range(possible_candidates.shape[1]):
-            # Skipping value if possible_candidates entry is 0
-            if possible_candidates[row][col] == 0:
-                continue
-            else:
-                current_energy = Energy[row][col]
-                if current_energy < min_energy:
-                    min_energy = current_energy
-                    min_index = possible_indices[col]
+
+        for col in candidate_indices:
+            current_energy = Energy[row][col]
+            if current_energy < min_energy:
+                min_energy = current_energy
+                min_index = possible_indices[col]
+
         # The label corresponding to the minimum energy is saved to the optical flow vector.
         if min_index != -1:
             optical_flow[row] = labels[row][min_index]
+
     return optical_flow
 
 
 def evaluating_preference_matrix(P, Energy, labels, z_hat):
-    possible_candidates, possible_indices = and_function(P, z_hat)
+    possible_candidates, possible_indices = union_function(P, z_hat)
     optical_flow = extracting_optical_flow(
         possible_candidates, possible_indices, Energy, labels)
 
@@ -159,7 +160,7 @@ def main():
         description='Parameters for the energy function.')
     parser.add_argument('-r', '--reg_type', nargs='?', default='L1',
                         help='Regularization type.')
-    parser.add_argument('-th', '--theta', nargs='?', default=2.5,
+    parser.add_argument('-th', '--theta', nargs='?', default=1.5,
                         help='Threshold value used when populating P matrix.')
     parser.add_argument('-b', '--beta', nargs='?', default=1,
                         help='Value used when computing weights in the energy function.')
@@ -171,7 +172,8 @@ def main():
     args = parser.parse_args()
     # Loading and preparing frames (attualmente sono grayscale per semplicità)
     frame_1, frame_2 = load_frames(dataset_dir)
-
+    frame_1 = cv2.Canny(frame_1, 100, 200)
+    frame_2 = cv2.Canny(frame_2, 100, 200)
     # Generating labels
     labels = generate_labels(frame_1.shape)
 

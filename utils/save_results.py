@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
+import cv2
 import numpy as np
+# import spynet
 
 
 def save_flow_to_file(flow, height, width, path):
@@ -22,7 +24,7 @@ def save_flow_image(frame1, frame2, flow, path):
     height = frame1.shape[0]
     width = frame1.shape[1]
     save_flow_to_file(flow, height, width, path)
-    step = 2  # 2
+    step = 1  # 2
     plt.figure(figsize=(20, 5))
 
     plt.subplot(131)
@@ -37,22 +39,26 @@ def save_flow_image(frame1, frame2, flow, path):
 
     plt.subplot(133)
     plt.title('Optical Flow')
+    hsv = np.zeros((frame1.shape[0], frame1.shape[1], 3), dtype='uint8')
+    hsv = cv2.cvtColor(hsv, cv2.COLOR_BGR2HSV)
+
+    # Efficiently convert the (128, 128) array of tuples to a (128, 128, 2) array
+    reshaped_flow_array = np.array(flow.tolist()).astype('float32')
+
     # Create the coordinate grids
-    x = np.arange(0, width, step)
-    y = np.arange(height - 1, -1, -step)
+    x_grid = np.arange(0, np.array(frame1).shape[1], step)
+    y_grid = np.arange(np.array(frame1).shape[0] - 1, -1, -step)
+    plt.quiver(x_grid, y_grid,
+               reshaped_flow_array[::step, ::step, 0], -reshaped_flow_array[::step, ::step, 1])  # Invert Y component for correct orientation
 
-    # Initialize arrays to store the flow components
-    u = np.zeros((height // step, width // step))
-    v = np.zeros((height // step, width // step))
+    mag, ang = cv2.cartToPolar(
+        reshaped_flow_array[..., 0], reshaped_flow_array[..., 1])
 
-    # Extract the flow components
-    for i in range(0, height, step):
-        for j in range(0, width, step):
-            u[i // step, j // step] = flow[i, j][0]  # horizontal component
-            v[i // step, j // step] = flow[i, j][1]  # vertical component
-
-    # Create the quiver plot
-    plt.quiver(x, y, u, v)
+    hsv[..., 0] = ang*180/np.pi/2
+    hsv[..., 1] = 255
+    hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+    rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
 
     plt.axis('off')
     plt.savefig(path + 'flow.png')
+    cv2.imwrite(path + 'flow_colors.png', rgb)

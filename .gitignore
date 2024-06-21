@@ -1,6 +1,7 @@
 # Demo output files
 *.csv
 flow.png
+flow_colors.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

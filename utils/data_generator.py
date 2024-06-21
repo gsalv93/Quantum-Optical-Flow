@@ -5,7 +5,7 @@ import numpy as np
 
 dataset_dir = 'dataset/'
 epsilon = sys.float_info.min
-penalty_value = 10000
+penalty_value = np.iinfo(np.int32).max
 # MISC
 
 
@@ -22,13 +22,15 @@ def get_pad_size(counter):
 
 
 def pad_images(image_1, image_2, pad_size):
+    image_1 = image_1.astype('int32')
+    image_2 = image_2.astype('int32')
     p_frame1 = cv2.copyMakeBorder(
         image_1, pad_size, pad_size, pad_size, pad_size, cv2.BORDER_CONSTANT, 0)
 
     # Padding value for image_2 is bigger since out of bounds situations during I2 patch calculation for NCC may otherwise occur.
     # Padding with the penalty value (buffer zone) and then padding the buffer zone with zero padding to avoid going out of bounds.
     p_frame2 = np.pad(image_2, pad_width=pad_size, mode='constant',
-                      constant_values=penalty_value).astype('int32')
+                      constant_values=penalty_value)
     p_frame2 = np.pad(p_frame2, pad_width=pad_size, mode='constant',
                       constant_values=0)
 
@@ -113,24 +115,24 @@ def penalty(pixel_coordinates, label, padded_I1, padded_I2, pad_size):
     patch_y = int(pixel_coords_of_padded_I1[1] - pad_size)
 
     patch_I1 = padded_I1[patch_x:patch_x +
-                         patch_size, patch_y:patch_y+patch_size].astype('int32')
+                         patch_size, patch_y:patch_y+patch_size]
 
     # I do the same for I2
     pixel_coords_in_I2 = tuple(
         map(sum, zip(pixel_coordinates, label)))  # p+fp
 
     pixel_coords_of_padded_I2 = tuple(
-        map(sum, zip(pixel_coords_in_I2, (pad_size+pad_size, pad_size+pad_size))))
+        map(sum, zip(pixel_coords_in_I2, (pad_size, pad_size))))
 
-    patch_x = int(pixel_coords_of_padded_I2[0])
-    patch_y = int(pixel_coords_of_padded_I2[1])
+    patch_x_2 = int(pixel_coords_of_padded_I2[0])
+    patch_y_2 = int(pixel_coords_of_padded_I2[1])
 
-    patch_I2 = padded_I2[patch_x:patch_x +
-                         patch_size, patch_y:patch_y+patch_size].astype('int32')
+    patch_I2 = padded_I2[patch_x_2:patch_x_2 +
+                         patch_size, patch_y_2:patch_y_2+patch_size]
 
-    ncc = np.mean(ncc_computation(patch_I1, patch_I2))
+    ncc = np.average(ncc_computation(patch_I1, patch_I2))
+
     output = 1 - np.maximum(ncc, 0)
-
     return output
 
 # Computing Preference matrix P.
@@ -165,6 +167,7 @@ def get_preference_matrix_fm(frame_1, frame_2, labels, reg_type, theta, beta, La
         # PADDING IMAGES AND LABEL MATRIX
         pad_size = get_pad_size(label_index)
         padded_frame_1, padded_frame_2 = pad_images(frame_1, frame_2, pad_size)
+
         padded_label_matrix = np.pad(
             label_matrix, (1, 1), 'constant', constant_values=(0, 0))
 
@@ -194,21 +197,20 @@ def get_preference_matrix_fm(frame_1, frame_2, labels, reg_type, theta, beta, La
                     neighbour_pixel_coordinates = pixel_neighbours[i]
                     # Check if the 4-pixel neighbour is inside the label matrix
                     # If it's not, I leave its coordinates to zero.
-                    neighbour_label = padded_label_matrix[neighbour_pixel_coordinates[0] +
-                                                          1][neighbour_pixel_coordinates[1]+1]
-
+                    neighbour_label = pixel_label_neighbours[i]
                     f_difference = (pixel_label[0] - neighbour_label[0],
                                     pixel_label[1] - neighbour_label[1])
                     reg_factor = regularization(f_difference, tao, reg_type)
 
                     # I1 at pixel_coord, I2 at pixel_neighbours
-
                     w = weight(padded_frame_1[pixel_coordinates[0]][pixel_coordinates[1]],
                                padded_frame_2[neighbour_pixel_coordinates[0]][neighbour_pixel_coordinates[1]], beta)
                     rho_S += w*reg_factor
 
                 # Computing objective for pixel (i,j)
                 e = rho_D + (Lambda * rho_S)
+
+                # print(e)
                 Energy[iteration][label_index] = e
                 # Checking if the label is suitable for pixel (i,j)
 
@@ -216,6 +218,7 @@ def get_preference_matrix_fm(frame_1, frame_2, labels, reg_type, theta, beta, La
                     P[iteration][label_index] = 1
 
                 iteration += 1
+
     np.savetxt('demo_output/P.csv', P, delimiter=',')
     np.savetxt('demo_output/Energy.csv', Energy, delimiter=',')
 
