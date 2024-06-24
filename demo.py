@@ -172,8 +172,8 @@ def main():
     args = parser.parse_args()
     # Loading and preparing frames (attualmente sono grayscale per semplicità)
     frame_1, frame_2 = load_frames(dataset_dir)
-    frame_1 = cv2.Canny(frame_1, 100, 200)
-    frame_2 = cv2.Canny(frame_2, 100, 200)
+    # frame_1 = cv2.Canny(frame_1, 100, 200)
+    # frame_2 = cv2.Canny(frame_2, 100, 200)
     # Generating labels
     labels = generate_labels(frame_1.shape)
 

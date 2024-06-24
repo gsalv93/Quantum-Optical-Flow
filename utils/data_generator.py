@@ -70,10 +70,33 @@ def regularization(f_star, tao, reg_type):
 
 
 def weight(I1_value, I2_value, beta):  # exp(- (||I1(p) - I2(q)|| / beta))
-    return math.exp(-((np.linalg.norm(np.array(I1_value) - np.array(I2_value)))/beta))
+    diff = np.linalg.norm(np.array(I1_value) - np.array(I2_value))
+    return math.exp(-diff / beta)
 
+
+def rho_s_penalty(padded_frame_1, padded_frame_2, pixel_coordinates, pixel_neighbours, pixel_label, pixel_label_neighbours, reg_type, tao, beta):
+    rho_S = 0
+    for i in range(4):
+        neighbour_pixel_coordinates = pixel_neighbours[i]
+        # Check if the 4-pixel neighbour is inside the label matrix
+        # If it's not, I leave its coordinates to zero.
+        neighbour_label = pixel_label_neighbours[i]
+        f_difference = (pixel_label[0] - neighbour_label[0],
+                        pixel_label[1] - neighbour_label[1])
+        reg_factor = regularization(f_difference, tao, reg_type)
+
+        # I1 at pixel_coord, I2 at pixel_neighbours
+        I1_value = padded_frame_1[pixel_coordinates[0],
+                                  pixel_coordinates[1]]
+        I2_value = padded_frame_2[neighbour_pixel_coordinates[0],
+                                  neighbour_pixel_coordinates[1]]
+
+        w = weight(I1_value, I2_value, beta)
+        rho_S += w*reg_factor
+    return rho_S
 
 # RHO_D STUFF
+
 
 """
 NCC is the normalized cross-correlation between
@@ -102,7 +125,7 @@ def ncc_computation(patch_I1, patch_I2):
 # Patches from the two frames are extracted and then passed to the NCC function.
 
 
-def penalty(pixel_coordinates, label, padded_I1, padded_I2, pad_size):
+def rho_d_penalty(pixel_coordinates, label, padded_I1, padded_I2, pad_size):
 
     # PREPARING I1 AND I2 PATCHES FOR NCC
     patch_size = pad_size*2+1
@@ -169,7 +192,7 @@ def get_preference_matrix_fm(frame_1, frame_2, labels, reg_type, theta, beta, La
         padded_frame_1, padded_frame_2 = pad_images(frame_1, frame_2, pad_size)
 
         padded_label_matrix = np.pad(
-            label_matrix, (1, 1), 'constant', constant_values=(0, 0))
+            label_matrix, ((1, 1), (1, 1)), 'constant', constant_values=(0, 0))
 
         print(
             f"--- Evaluating label for patch size of {pad_size*2+1} for each pixel ---")
@@ -179,20 +202,26 @@ def get_preference_matrix_fm(frame_1, frame_2, labels, reg_type, theta, beta, La
                 padded_col = pixel_col+1
 
                 pixel_coordinates = (pixel_row, pixel_col)  # p
-                pixel_label = label_matrix[pixel_row][pixel_col]  # fp
+                pixel_label = label_matrix[pixel_row, pixel_col]  # fp
 
                 pixel_neighbours = [(pixel_row, pixel_col+1), (pixel_row+1, pixel_col),
                                     (pixel_row, pixel_col-1), (pixel_row-1, pixel_col)]  # q
                 # Using padded label matrix in order to avoid going out of bounds.
-                pixel_label_neighbours = [padded_label_matrix[padded_row][padded_col+1], padded_label_matrix[padded_row+1]
-                                          [padded_col], padded_label_matrix[padded_row][padded_col-1], padded_label_matrix[padded_row-1][padded_col]]  # fq
+                pixel_label_neighbours = [padded_label_matrix[padded_row, padded_col+1],
+                                          padded_label_matrix[padded_row +
+                                                              1, padded_col],
+                                          padded_label_matrix[padded_row,
+                                                              padded_col-1],
+                                          padded_label_matrix[padded_row-1, padded_col]]  # fq
 
                 # Computing rho_D for pixel (i,j)
-                rho_D = penalty(pixel_coordinates,
-                                pixel_label, padded_frame_1, padded_frame_2, pad_size)
+                rho_D = rho_d_penalty(pixel_coordinates,
+                                      pixel_label, padded_frame_1, padded_frame_2, pad_size)
 
                 # Computing rho_S for pixel (i,j)
-                rho_S = 0
+                rho_S = rho_s_penalty(padded_frame_1, padded_frame_2, pixel_coordinates, pixel_neighbours,
+                                      pixel_label, pixel_label_neighbours, reg_type, tao, beta)
+                """
                 for i in range(0, 4):
                     neighbour_pixel_coordinates = pixel_neighbours[i]
                     # Check if the 4-pixel neighbour is inside the label matrix
@@ -203,10 +232,14 @@ def get_preference_matrix_fm(frame_1, frame_2, labels, reg_type, theta, beta, La
                     reg_factor = regularization(f_difference, tao, reg_type)
 
                     # I1 at pixel_coord, I2 at pixel_neighbours
-                    w = weight(padded_frame_1[pixel_coordinates[0]][pixel_coordinates[1]],
-                               padded_frame_2[neighbour_pixel_coordinates[0]][neighbour_pixel_coordinates[1]], beta)
-                    rho_S += w*reg_factor
+                    I1_value = padded_frame_1[pixel_coordinates[0],
+                                              pixel_coordinates[1]]
+                    I2_value = padded_frame_2[neighbour_pixel_coordinates[0],
+                                              neighbour_pixel_coordinates[1]]
 
+                    w = weight(I1_value, I2_value, beta)
+                    rho_S += w*reg_factor
+                """
                 # Computing objective for pixel (i,j)
                 e = rho_D + (Lambda * rho_S)
 
