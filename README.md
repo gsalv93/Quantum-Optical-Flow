@@ -4,6 +4,7 @@ The goal is to leverage Adiabatic Quantum Computing to solve the dense optical f
 
 ## Usage
 Type the following command in order to install the environment file
+
 ```
 conda env create -f environment.yml
 ```
@@ -39,8 +40,10 @@ Finally, pure quantum solver is recommended only when working with tiny images. 
 
 
 ## Results
-Below are some results obtained from my thesis. The colorwheel for reference when converting optical flow vectors to color is the following
+Below are some results obtained from my thesis. The colorwheel for reference when converting optical flow vectors to color is the following:
+
 ![This is an alt text.](assets/The-optical-flow-field-color-coding-Smaller-vectors-are-lighter-and-color-represents-the.png "Flow Field color coding") 
+
 Results are great when working with simple shapes. 
 
 Our algorithm was tested against Gunner Farneback's algorithm on simple geometry shapes. Here's a direct confrontation between the two approaches
@@ -51,8 +54,12 @@ Next, End Point Error and Angular Error from the aforementioned experiments are 
 
 ![This is an alt text.](assets/qof_vs_gf_scores.png "Quantum Optical Flow vs Gunner Farneback.")
 
+Finally, a more realistic scenario, where optical flow is computed in this video where trucks are moving downwards. The flow is, again, consistent with the colorwheel, although some noise is present.
+
+https://github.com/user-attachments/assets/2d26fdfa-c820-47a0-b637-bf5e773cd1c3
 
 ## References
+
 Dwave Sysyems:
 https://www.dwavesys.com/
 
