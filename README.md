@@ -1,5 +1,5 @@
 # Quantum Optical Flow
-Project for Master Thesis in "Applied Computer Science, Machine Learning and Big Data" in University of Naples Parthenope.
+Project for Master Thesis in "Applied Computer Science, Machine Learning and Big Data" by the University of Naples Parthenope.
 The goal is to leverage Adiabatic Quantum Computing to solve the dense optical flow algorithm using Dwave Quantum Solvers.
 
 ## Usage
