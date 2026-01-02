@@ -4,6 +4,8 @@
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
+utils/__pycache__/
+utils/FlowStats/__pycache__/
 *.py[cod]
 *$py.class
 
